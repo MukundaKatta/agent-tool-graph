@@ -1,4 +1,5 @@
 """Tests for agent-tool-graph."""
+
 import pytest
 from agent_tool_graph import ToolGraph, ToolNode, CycleError, MissingTool
 
@@ -153,3 +154,39 @@ def test_multiple_targets():
     g.add("c", requires=["a"])
     order = g.execution_order("b", "c")
     assert "b" in order and "c" in order and "a" in order
+
+
+def test_get_returns_toolnode():
+    g = ToolGraph()
+    g.add("fetch", description="fetch a page", region="eu")
+    node = g.get("fetch")
+    assert isinstance(node, ToolNode)
+    assert node.name == "fetch"
+    assert node.description == "fetch a page"
+    assert node.metadata == {"region": "eu"}
+
+
+def test_register_decorator_records_requires():
+    g = ToolGraph()
+    g.add("setup")
+
+    @g.register(requires=["setup"])
+    def my_tool():
+        """My tool docstring."""
+
+    node = g.get("my_tool")
+    assert node.requires == ["setup"]
+    assert node.description == "My tool docstring."
+
+
+def test_execution_order_unknown_target():
+    g = ToolGraph()
+    with pytest.raises(MissingTool):
+        g.execution_order("nope")
+
+
+def test_validate_unknown_dep_lists_offender():
+    g = ToolGraph()
+    g.add("b", requires=["a"])
+    errors = g.validate()
+    assert errors == ["b: requires unknown tool 'a'"]

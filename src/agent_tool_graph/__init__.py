@@ -1,6 +1,7 @@
 """
 agent-tool-graph: Declarative tool prerequisites — define which tools must run before others.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -9,11 +10,13 @@ from typing import Any, Optional
 
 class CycleError(ValueError):
     """Raised when a dependency cycle is detected."""
+
     pass
 
 
 class MissingTool(KeyError):
     """Raised when a referenced tool is not registered."""
+
     pass
 
 
@@ -61,11 +64,19 @@ class ToolGraph:
         )
         return self
 
-    def register(self, requires: Optional[list[str]] = None, description: str = "") -> Any:
+    def register(
+        self, requires: Optional[list[str]] = None, description: str = ""
+    ) -> Any:
         """Decorator: @graph.register(requires=['other_tool'])."""
+
         def decorator(fn: Any) -> Any:
-            self.add(fn.__name__, requires=requires, description=description or (fn.__doc__ or "").split("\n")[0])
+            self.add(
+                fn.__name__,
+                requires=requires,
+                description=description or (fn.__doc__ or "").split("\n")[0],
+            )
             return fn
+
         return decorator
 
     def get(self, name: str) -> ToolNode:

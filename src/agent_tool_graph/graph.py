@@ -164,9 +164,7 @@ class ToolGraph:
         # "missing prerequisite X" when the agent is repeating itself.
         for prior, rule in self._rules.items():
             if tool in rule.forbid_after and prior in history_set:
-                reason = (
-                    f"tool {tool!r} is forbidden after {prior!r} has run"
-                )
+                reason = f"tool {tool!r} is forbidden after {prior!r} has run"
                 raise ForbiddenSequenceError(tool, prior, reason)
 
         rule = self._rules.get(tool)
