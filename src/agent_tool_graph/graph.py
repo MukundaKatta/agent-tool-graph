@@ -1,4 +1,14 @@
-"""Core ToolGraph implementation."""
+"""Runtime sequence guard for agent tool calls.
+
+This module provides :class:`SequenceGuard`, which enforces ordering rules
+on a *stream* of tool calls as an agent runs. Where :class:`agent_tool_graph.ToolGraph`
+answers "what order should I plan tools in?" (a static dependency DAG),
+``SequenceGuard`` answers "given what has already run, may this tool run
+*now*?" -- including forbidding certain follow-ups.
+
+The two are complementary: plan with ``ToolGraph.execution_order`` ahead of
+time, then guard the live sequence with ``SequenceGuard.check`` at run time.
+"""
 
 from __future__ import annotations
 
@@ -55,7 +65,7 @@ class ForbiddenSequenceError(Exception):
 
 @dataclass(frozen=True)
 class CheckResult:
-    """Return value of `ToolGraph.check`. `ok` is True when the tool may
+    """Return value of `SequenceGuard.check`. `ok` is True when the tool may
     run given the history. On failure, exactly one of `missing` or
     `forbidden_after` is populated and `reason` carries a description."""
 
@@ -68,7 +78,7 @@ class CheckResult:
 
 @dataclass(frozen=True)
 class ValidationResult:
-    """Return value of `ToolGraph.validate_sequence`. If `ok` is False,
+    """Return value of `SequenceGuard.validate_sequence`. If `ok` is False,
     `failed_index` and `failed_tool` point at the first failing step."""
 
     ok: bool
@@ -86,8 +96,24 @@ class _Rule:
     forbid_after: set[str] = field(default_factory=set)
 
 
-class ToolGraph:
-    """Declarative graph of tool prerequisites.
+class SequenceGuard:
+    """Declarative guard for the order of agent tool calls.
+
+    A ``SequenceGuard`` holds a set of rules and answers, at run time,
+    whether a given tool may run *now* based on the tools that have already
+    run (the "history"). It complements :class:`agent_tool_graph.ToolGraph`,
+    which produces a static execution plan: plan with ``ToolGraph`` ahead of
+    time, then guard the live call stream with ``SequenceGuard``.
+
+    Example::
+
+        guard = SequenceGuard()
+        guard.require("checkout", needs="add_to_cart")
+        guard.forbid_after("refund", followed_by="checkout")
+
+        guard.is_allowed("checkout", ["add_to_cart"])   # True
+        guard.is_allowed("checkout", [])                # False (missing dep)
+        guard.is_allowed("checkout", ["refund"])        # False (forbidden)
 
     Methods:
       * `require(tool, needs=..., needs_any=...)` declare prerequisites.
@@ -252,7 +278,7 @@ class ToolGraph:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, dict[str, list[str]]]) -> ToolGraph:
+    def from_dict(cls, data: dict[str, dict[str, list[str]]]) -> SequenceGuard:
         """Round-trip companion to `to_dict()`. Tolerates missing keys."""
         if not isinstance(data, dict):
             raise TypeError("from_dict expects a dict")
@@ -272,3 +298,12 @@ class ToolGraph:
             if forbid_after:
                 g.forbid_after(name, followed_by=forbid_after)
         return g
+
+
+__all__ = [
+    "SequenceGuard",
+    "CheckResult",
+    "ValidationResult",
+    "MissingPrerequisiteError",
+    "ForbiddenSequenceError",
+]

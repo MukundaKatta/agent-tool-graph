@@ -1,10 +1,32 @@
 """
-agent-tool-graph: Declarative tool prerequisites — define which tools must run before others.
+agent-tool-graph: Declarative tool prerequisites for agent workflows.
+
+Two complementary primitives are exposed:
+
+* :class:`ToolGraph` -- a static dependency DAG. Register tools with their
+  prerequisites, then ask for a topologically-sorted ``execution_order``,
+  detect missing dependencies, and find cycles *before* anything runs.
+* :class:`SequenceGuard` -- a run-time guard. Given the tools that have
+  already run, decide whether a tool may run *now* (``needs`` / ``needs_any``)
+  and forbid certain follow-ups (``forbid_after``).
+
+Plan with ``ToolGraph`` ahead of time, then guard the live call stream with
+``SequenceGuard``.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Optional
+
+from .graph import (
+    CheckResult,
+    ForbiddenSequenceError,
+    MissingPrerequisiteError,
+    SequenceGuard,
+    ValidationResult,
+)
+
+__version__ = "0.1.0"
 
 
 class CycleError(ValueError):
@@ -169,4 +191,15 @@ class ToolGraph:
         return [n for n, node in self._nodes.items() if name in node.requires]
 
 
-__all__ = ["ToolGraph", "ToolNode", "CycleError", "MissingTool"]
+__all__ = [
+    "ToolGraph",
+    "ToolNode",
+    "CycleError",
+    "MissingTool",
+    "SequenceGuard",
+    "CheckResult",
+    "ValidationResult",
+    "MissingPrerequisiteError",
+    "ForbiddenSequenceError",
+    "__version__",
+]
